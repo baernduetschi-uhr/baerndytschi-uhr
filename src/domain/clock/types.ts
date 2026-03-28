@@ -24,3 +24,7 @@ export type ResolveDisplayStateInput = {
   digitalText: string;
   digitalDateText: string;
 };
+export type DatePart = {
+  type: string;
+  value: string;
+};
