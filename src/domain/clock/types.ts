@@ -1,0 +1,26 @@
+import type { ThemeVariant } from "@/src/types/common";
+import type { ResolvedHoliday } from "@/src/domain/holidays/types";
+import type { MealWindow } from "@/src/domain/meal-windows/types";
+
+export type ClockDisplayState = {
+  holidayText: string;
+  mealText: string;
+  timeText: string;
+  dateText: string;
+  digitalText: string;
+  digitalDateText: string;
+  theme: ThemeVariant;
+  holiday: ResolvedHoliday | null;
+  meal: MealWindow | null;
+};
+
+export type ResolveDisplayStateInput = {
+  now: Date;
+  showDate: boolean;
+  holidays: ResolvedHoliday[];
+  meals: MealWindow[];
+  dateText: string;
+  timeText: string;
+  digitalText: string;
+  digitalDateText: string;
+};

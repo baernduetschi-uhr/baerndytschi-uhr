@@ -1,0 +1,31 @@
+
+
+
+
+cd C:\Users\bidu5\Desktop\CodeAnalyzer> streamlit run app.py
+
+streamlit run app.py
+
+python reset_db.py
+
+
+
+cd C:\Users\bidu5\Desktop\ExcelControl
+
+PS C:\Users\bidu5\Desktop\ExcelControl> streamlit run app.py
+
+
+
+cd C:\Users\bidu5\Desktop\Bidus-Arbeitsbuch
+
+cd C:\Users\bidu5\Desktop\Bidus-Arbeitsbuch
+npm install
+npm run dev
+
+← holen
+→ bringen
+↔ hin, zurück
+
+NW = Neu Scania LKW
+VW = Neu Wagen VW
+Betrieb = interne Verrechnung
