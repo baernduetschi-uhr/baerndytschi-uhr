@@ -33,7 +33,6 @@ function calculateEasterSunday(year: number): Date {
   const m = Math.floor((a + 11 * h + 22 * l) / 451);
   const month = Math.floor((h + l - 7 * m + 114) / 31);
   const day = ((h + l - 7 * m + 114) % 31) + 1;
-
   return new Date(year, month - 1, day);
 }
 
@@ -43,7 +42,7 @@ function buildHolidaysFromRules(
 ): ResolvedHoliday[] {
   return rules
     .filter((rule) => rule.active)
-    .map((rule) => {
+    .map((rule): ResolvedHoliday | null => {
       let date: Date | null = null;
 
       if (rule.rule_type === "fixed" && rule.month && rule.day) {
@@ -84,18 +83,13 @@ export async function getResolvedHolidays(
       .eq("active", true),
   ]);
 
-  if (manualError) {
-    throw manualError;
-  }
-
-  if (rulesError) {
-    throw rulesError;
-  }
+  if (manualError) throw manualError;
+  if (rulesError) throw rulesError;
 
   const manualHolidays: ResolvedHoliday[] = ((manualData ?? []) as Holiday[]).map(
     (item) => ({
       ...item,
-      source: "manual",
+      source: "manual" as const,
     })
   );
 
@@ -103,4 +97,3 @@ export async function getResolvedHolidays(
   const generatedHolidays = buildHolidaysFromRules(year, holidayRules);
 
   return [...manualHolidays, ...generatedHolidays];
-}
