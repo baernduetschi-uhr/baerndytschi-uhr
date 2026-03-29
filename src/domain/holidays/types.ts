@@ -1,6 +1,6 @@
 export type Holiday = {
   id: string;
-  key: string | null;
+  key: string;
   name: string;
   date: string;
   text: string;
