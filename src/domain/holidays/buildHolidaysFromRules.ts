@@ -39,5 +39,5 @@ export function buildHolidaysFromRules(
         active: rule.active,
       } satisfies Holiday;
     })
-    .filter((item): item is Holiday => item !== null);
+    .filter((item): item is Holiday => item !== null) as Holiday[];
 }
