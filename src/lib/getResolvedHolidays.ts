@@ -97,3 +97,4 @@ export async function getResolvedHolidays(
   const generatedHolidays = buildHolidaysFromRules(year, holidayRules);
 
   return [...manualHolidays, ...generatedHolidays];
+  }
