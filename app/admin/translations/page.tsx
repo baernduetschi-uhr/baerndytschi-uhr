@@ -40,6 +40,8 @@ const keyLabels: Record<string, string> = {
   swiss_national: "Bundesfeiertag", assumption: "Mariä Himmelfahrt",
   all_saints: "Allerheiligen", christmas_eve: "Heiligabend",
   christmas_second: "Stephanstag", jahraestagg: "Jahräs Tag",
+  national_day: "Nationalfeiertag", boxing_day: "Stephanstag",
+  labour_day: "Tag der Arbeit", easter_sunday: "Ostersonntag",
 };
 
 const sortOrders: Record<TranslationCategory, string[]> = {
@@ -47,7 +49,7 @@ const sortOrders: Record<TranslationCategory, string[]> = {
   month: ["january","february","march","april","may","june","july","august","september","october","november","december"],
   day: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31"],
   year: ["2025","2026","2027","2028","2029","2030"],
-  holiday: ["new_year","good_friday","easter","easter_monday","ascension","whit_sunday","whit_monday","swiss_national","assumption","all_saints","christmas_eve","christmas","christmas_second","new_year_eve","jahraestagg"],
+  holiday: ["new_year","good_friday","easter","easter_monday","ascension","whit_sunday","whit_monday","national_day","assumption","all_saints","christmas_eve","christmas","boxing_day","new_year_eve","jahraestagg"],
 };
 
 function prettyKey(key: string, category?: TranslationCategory) {
@@ -85,9 +87,15 @@ export default function TranslationsPage() {
     loadItems();
   }, [selectedLanguage]);
 
+  // Nur bei Kategorie-Wechsel zurücksetzen, NICHT bei items-Änderung
   useEffect(() => {
-    setSelectedId(getFilteredItems(items, category)[0]?.id ?? null);
-  }, [category, items]);
+    setSelectedId(prev => {
+      const filtered = getFilteredItemsRaw(items, category, selectedLanguage);
+      // Wenn aktuell ausgewähltes Item noch in neuer Kategorie existiert, behalten
+      if (prev && filtered.some(i => i.id === prev)) return prev;
+      return filtered[0]?.id ?? null;
+    });
+  }, [category]);
 
   async function loadItems() {
     setLoading(true);
@@ -100,10 +108,10 @@ export default function TranslationsPage() {
     setLoading(false);
   }
 
-  function getFilteredItems(all: Item[], cat: TranslationCategory) {
+  function getFilteredItemsRaw(all: Item[], cat: TranslationCategory, lang: string) {
     const order = sortOrders[cat] ?? [];
     return all
-      .filter(item => item.category === cat && item.language === selectedLanguage)
+      .filter(item => item.category === cat && item.language === lang)
       .sort((a, b) => {
         const ai = order.indexOf(a.key), bi = order.indexOf(b.key);
         if (ai === -1 && bi === -1) return prettyKey(a.key, cat).localeCompare(prettyKey(b.key, cat), "de-CH");
@@ -111,6 +119,10 @@ export default function TranslationsPage() {
         if (bi === -1) return -1;
         return ai - bi;
       });
+  }
+
+  function getFilteredItems(all: Item[], cat: TranslationCategory) {
+    return getFilteredItemsRaw(all, cat, selectedLanguage);
   }
 
   const filteredItems = getFilteredItems(items, category);
@@ -137,12 +149,15 @@ export default function TranslationsPage() {
     if (!draft) return;
     if (!draft.key.trim()) { alert("Bitte einen Schlüssel eingeben."); return; }
     setSaving(true);
+    const currentId = draft.id;
     const { error } = await supabase
       .from("translations")
       .update({ key: draft.key.trim(), value: draft.value, category: draft.category, language: draft.language })
-      .eq("id", draft.id);
+      .eq("id", currentId);
     setSaving(false);
     if (error) { alert(`Fehler: ${error.message}`); return; }
+    // selectedId beibehalten!
+    setSelectedId(currentId);
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   }
@@ -165,7 +180,6 @@ export default function TranslationsPage() {
         <p className="text-zinc-400 mt-3">Änderige wärde direkt i Supabase gspeicheret.</p>
       </div>
 
-      {/* Toolbar: Sprach-Dropdown + Kategorie */}
       <div className="flex flex-wrap items-center gap-3 mb-8">
         <select
           value={selectedLanguage}
@@ -198,7 +212,6 @@ export default function TranslationsPage() {
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6">
 
-          {/* Liste */}
           <section className="rounded-[2rem] border border-zinc-800 bg-zinc-950 p-5">
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -230,7 +243,6 @@ export default function TranslationsPage() {
             </div>
           </section>
 
-          {/* Bearbeiten */}
           <section className="rounded-[2rem] border border-zinc-800 bg-zinc-950 p-8">
             {draft ? (
               <>

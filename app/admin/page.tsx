@@ -74,6 +74,19 @@ const cards: Card[] = [
     title: "Sprach-Menü konfiguriere",
     description: "Gruppen, Regione und Reihefolg per Drag & Drop",
 },
+{
+  href: "/admin/birthdays",
+  category: "Geburtstag",
+  title: "Geburtstäg verwalte",
+  description: "Widerkerendi Geburtstäg aazige",
+},
+{
+  href: "/admin/display-words",
+  category: "Wörter",
+  title: "Anzeigewörter",
+  description: "Wörter und Beschreibige pro Sprach",
+},
+
 ];
 
 export default function AdminHome() {

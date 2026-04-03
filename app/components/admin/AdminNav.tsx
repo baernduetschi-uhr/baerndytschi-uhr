@@ -6,8 +6,9 @@ import { usePathname } from "next/navigation";
 const items = [
   { href: "/admin", label: "Uhr" },
   { href: "/admin/translations", label: "Begriffe" },
+  { href: "/admin/holidays", label: "Feiertag" },
   { href: "/admin/meal-windows", label: "Zytfänschter" },
-  { href: "/admin/holidays", label: "Feiertäg" },
+  { href: "/admin/birthdays", label: "Geburstag" },
   { href: "/admin/time-words", label: "Zytwörter" },
   { href: "/admin/settings", label: "Einstellungen" },
   { href: "/admin/languages", label: "Sprachen" },
@@ -16,6 +17,7 @@ const items = [
   { href: "/admin/language-export", label: "Export" },
   { href: "/admin/language-validation", label: "Prüfumg" },
   { href: "/admin/menu", label: "Menü" },
+  { href: "/admin/display-words", label: "Wörter" },
 ];
 
 export default function AdminNav() {

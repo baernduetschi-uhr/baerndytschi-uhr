@@ -5,4 +5,5 @@ export type MealWindow = {
   from: string;
   to: string;
   active: boolean;
+  color: string;
 };

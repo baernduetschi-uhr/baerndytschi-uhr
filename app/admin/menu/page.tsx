@@ -12,14 +12,10 @@ type Language = {
   sort_order: number;
 };
 
-// ─── Drag State ───────────────────────────────────────────────────────────────
-
 type DragItem =
   | { type: "lang"; code: string }
   | { type: "region"; group: string; region: string }
   | { type: "group"; group: string };
-
-// ─── Inline Edit ──────────────────────────────────────────────────────────────
 
 function InlineEdit({ value, onSave, className }: { value: string; onSave: (v: string) => void; className?: string }) {
   const [editing, setEditing] = useState(false);
@@ -52,8 +48,6 @@ function InlineEdit({ value, onSave, className }: { value: string; onSave: (v: s
   );
 }
 
-// ─── Drag Handle ──────────────────────────────────────────────────────────────
-
 function DragHandle({ onDragStart }: { onDragStart: (e: React.DragEvent) => void }) {
   return (
     <div
@@ -71,8 +65,6 @@ function DragHandle({ onDragStart }: { onDragStart: (e: React.DragEvent) => void
   );
 }
 
-// ─── Chevron ──────────────────────────────────────────────────────────────────
-
 function Chevron({ open }: { open: boolean }) {
   return (
     <svg
@@ -85,8 +77,6 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
 export default function MenuPage() {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,15 +84,12 @@ export default function MenuPage() {
   const [saved, setSaved] = useState(false);
   const [editingLang, setEditingLang] = useState<Language | null>(null);
 
-  // Open/closed state
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set());
   const [closedRegions, setClosedRegions] = useState<Set<string>>(new Set());
 
-  // Drag
   const dragItem = useRef<DragItem | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
-  // New group/region
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [showNewRegion, setShowNewRegion] = useState(false);
   const [showNewSubRegion, setShowNewSubRegion] = useState(false);
@@ -125,7 +112,6 @@ export default function MenuPage() {
     setLoading(false);
   }
 
-  // ── Build tree ──
   type TreeNode = {
     group: string;
     regions: {
@@ -134,22 +120,18 @@ export default function MenuPage() {
         subRegion: string;
         languages: Language[];
       }[];
-      languages: Language[]; // Sprachen direkt in Region (ohne Unterregion)
+      languages: Language[];
     }[];
   };
 
   function buildTree(): TreeNode[] {
     const groupMap = new Map<string, Map<string, Map<string, Language[]>>>();
-
     for (const lang of languages) {
       const group = lang.group_name ?? "Andere";
       const regionRaw = lang.region ?? "Andere";
-
-      // Region kann "Region/Unterregion" sein
       const parts = regionRaw.split("/");
       const region = parts[0].trim();
       const subRegion = parts[1]?.trim() ?? "__root__";
-
       if (!groupMap.has(group)) groupMap.set(group, new Map());
       const regionMap = groupMap.get(group)!;
       if (!regionMap.has(region)) regionMap.set(region, new Map());
@@ -157,7 +139,6 @@ export default function MenuPage() {
       if (!subMap.has(subRegion)) subMap.set(subRegion, []);
       subMap.get(subRegion)!.push(lang);
     }
-
     return [...groupMap.entries()].map(([group, regionMap]) => ({
       group,
       regions: [...regionMap.entries()].map(([region, subMap]) => ({
@@ -180,7 +161,6 @@ export default function MenuPage() {
     return r.split("/")[0].trim();
   }))];
 
-  // ── Toggle open/close ──
   function toggleGroup(group: string) {
     setClosedGroups(prev => {
       const next = new Set(prev);
@@ -197,7 +177,6 @@ export default function MenuPage() {
     });
   }
 
-  // ── Rename ──
   function renameGroup(oldName: string, newName: string) {
     if (!newName.trim() || newName === oldName) return;
     setLanguages(prev => prev.map(l =>
@@ -230,7 +209,6 @@ export default function MenuPage() {
     }));
   }
 
-  // ── Drag & Drop (HTML5) ──
   function handleLangDragStart(code: string) {
     dragItem.current = { type: "lang", code };
   }
@@ -247,15 +225,12 @@ export default function MenuPage() {
     const item = dragItem.current;
     if (!item || item.type !== "lang") return;
     if (item.code === targetCode) return;
-
     setLanguages(prev => {
       const arr = [...prev];
       const fromIdx = arr.findIndex(l => l.code === item.code);
       const toIdx = arr.findIndex(l => l.code === targetCode);
       const target = arr[toIdx];
-      // Move to same group/region as target
       arr[fromIdx] = { ...arr[fromIdx], group_name: target.group_name, region: target.region };
-      // Reorder
       const [moved] = arr.splice(fromIdx, 1);
       arr.splice(toIdx, 0, moved);
       return arr.map((l, i) => ({ ...l, sort_order: i + 1 }));
@@ -267,14 +242,11 @@ export default function MenuPage() {
   function handleDropOnRegion(targetGroup: string, targetRegion: string) {
     const item = dragItem.current;
     if (!item) return;
-
     if (item.type === "lang") {
-      // Move lang to this region
       setLanguages(prev => prev.map(l =>
         l.code === item.code ? { ...l, group_name: targetGroup, region: targetRegion } : l
       ));
     } else if (item.type === "region" && (item.group !== targetGroup || item.region !== targetRegion)) {
-      // Reorder regions by moving all langs from source to target position
       setLanguages(prev => {
         const sourceLangs = prev.filter(l => l.group_name === item.group && l.region?.split("/")[0].trim() === item.region);
         const others = prev.filter(l => !(l.group_name === item.group && l.region?.split("/")[0].trim() === item.region));
@@ -285,7 +257,6 @@ export default function MenuPage() {
         return others.map((l, i) => ({ ...l, sort_order: i + 1 }));
       });
     }
-
     setDragOver(null);
     dragItem.current = null;
   }
@@ -293,13 +264,11 @@ export default function MenuPage() {
   function handleDropOnGroup(targetGroup: string) {
     const item = dragItem.current;
     if (!item) return;
-
     if (item.type === "lang") {
       setLanguages(prev => prev.map(l =>
         l.code === item.code ? { ...l, group_name: targetGroup } : l
       ));
     } else if (item.type === "group" && item.group !== targetGroup) {
-      // Swap group order — move all langs of source group after target group
       setLanguages(prev => {
         const sourceLangs = prev.filter(l => l.group_name === item.group);
         const others = prev.filter(l => l.group_name !== item.group);
@@ -308,7 +277,6 @@ export default function MenuPage() {
         return others.map((l, i) => ({ ...l, sort_order: i + 1 }));
       });
     }
-
     setDragOver(null);
     dragItem.current = null;
   }
@@ -318,6 +286,13 @@ export default function MenuPage() {
     const updated = { ...editingLang, ...patch };
     setEditingLang(updated);
     setLanguages(prev => prev.map(l => l.code === updated.code ? updated : l));
+  }
+
+  async function deleteLang(code: string) {
+    if (!confirm(`Sprache wirklich löschen?`)) return;
+    await supabase.from("languages").delete().eq("code", code);
+    setLanguages(prev => prev.filter(l => l.code !== code));
+    setEditingLang(null);
   }
 
   async function saveAll() {
@@ -336,7 +311,30 @@ export default function MenuPage() {
     setTimeout(() => setSaved(false), 1500);
   }
 
-  // ── Render ──
+  const LangRow = ({ lang }: { lang: Language }) => (
+    <div
+      key={lang.code}
+      draggable
+      onDragStart={() => handleLangDragStart(lang.code)}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(`lang:${lang.code}`); }}
+      onDragLeave={() => setDragOver(null)}
+      onDrop={() => handleDropOnLang(lang.code)}
+      onClick={() => setEditingLang(lang)}
+      className={["flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors",
+        dragOver === `lang:${lang.code}` ? "border-white/30 bg-zinc-700" :
+        editingLang?.code === lang.code ? "border-zinc-400 bg-zinc-900" :
+        "border-zinc-800 hover:border-zinc-700"].join(" ")}
+    >
+      <DragHandle onDragStart={(e) => { e.stopPropagation(); handleLangDragStart(lang.code); }} />
+      <span className="flex-1 text-sm text-white">{lang.label}</span>
+      <span className="text-xs text-zinc-600 bg-zinc-900 px-2 py-0.5 rounded-md">{lang.code.toUpperCase()}</span>
+      <span className={["text-xs px-2 py-0.5 rounded-full",
+        lang.active ? "text-green-400 bg-green-400/10" : "text-zinc-600 bg-zinc-800"].join(" ")}>
+        {lang.active ? "aktiv" : "inaktiv"}
+      </span>
+    </div>
+  );
+
   return (
     <div className="text-white">
       <div className="mb-8">
@@ -349,10 +347,7 @@ export default function MenuPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
 
-        {/* Links */}
         <div className="space-y-4">
-
-          {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={saveAll}
@@ -379,11 +374,9 @@ export default function MenuPage() {
             </div>
           </div>
 
-          {/* Neue Gruppe */}
           {showNewGroup && (
             <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-4 flex gap-3 items-center">
               <input autoFocus value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && newGroupName.trim() && (setShowNewGroup(false), setNewGroupName(""))}
                 placeholder="z. B. Asiatische Sprachen"
                 className="flex-1 bg-black border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white outline-none" />
               <button onClick={() => { setShowNewGroup(false); setNewGroupName(""); }}
@@ -392,7 +385,6 @@ export default function MenuPage() {
             </div>
           )}
 
-          {/* Neue Region */}
           {showNewRegion && (
             <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-4 flex gap-3 items-center flex-wrap">
               <select value={newRegionGroup} onChange={(e) => setNewRegionGroup(e.target.value)}
@@ -409,7 +401,6 @@ export default function MenuPage() {
             </div>
           )}
 
-          {/* Neue Unterregion */}
           {showNewSubRegion && (
             <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-4 flex gap-3 items-center flex-wrap">
               <select value={newSubRegionGroup} onChange={(e) => setNewSubRegionGroup(e.target.value)}
@@ -431,7 +422,6 @@ export default function MenuPage() {
             </div>
           )}
 
-          {/* Tree */}
           {loading ? <div className="text-zinc-500">Lade...</div> : (
             <div className="space-y-4">
               {tree.map(groupNode => {
@@ -445,7 +435,6 @@ export default function MenuPage() {
                     onDragLeave={() => setDragOver(null)}
                     onDrop={() => handleDropOnGroup(groupNode.group)}
                   >
-                    {/* Group Header */}
                     <div
                       className="flex items-center gap-2 p-5 cursor-pointer select-none"
                       onClick={() => toggleGroup(groupNode.group)}
@@ -453,18 +442,13 @@ export default function MenuPage() {
                       <DragHandle onDragStart={(e) => { e.stopPropagation(); handleGroupDragStart(groupNode.group); }} />
                       <Chevron open={groupOpen} />
                       <span className="text-xs uppercase tracking-[0.3em] flex-1">
-                        <InlineEdit
-                          value={groupNode.group}
-                          onSave={(val) => renameGroup(groupNode.group, val)}
-                          className="text-zinc-400"
-                        />
+                        <InlineEdit value={groupNode.group} onSave={(val) => renameGroup(groupNode.group, val)} className="text-zinc-400" />
                       </span>
                       <span className="text-xs text-zinc-700">
                         {groupNode.regions.reduce((acc, r) => acc + r.languages.length + r.subRegions.reduce((a, s) => a + s.languages.length, 0), 0)} Sprachen
                       </span>
                     </div>
 
-                    {/* Regions */}
                     {groupOpen && (
                       <div className="px-5 pb-5 space-y-3">
                         {groupNode.regions.map(regionNode => {
@@ -479,7 +463,6 @@ export default function MenuPage() {
                               onDragLeave={() => setDragOver(null)}
                               onDrop={(e) => { e.stopPropagation(); handleDropOnRegion(groupNode.group, regionNode.region); }}
                             >
-                              {/* Region Header */}
                               <div
                                 className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none"
                                 onClick={() => toggleRegion(regionKey)}
@@ -487,47 +470,17 @@ export default function MenuPage() {
                                 <DragHandle onDragStart={(e) => { e.stopPropagation(); handleRegionDragStart(groupNode.group, regionNode.region); }} />
                                 <Chevron open={regionOpen} />
                                 <span className="text-sm flex-1">
-                                  <InlineEdit
-                                    value={regionNode.region}
-                                    onSave={(val) => renameRegion(groupNode.group, regionNode.region, val)}
-                                    className="text-zinc-400"
-                                  />
+                                  <InlineEdit value={regionNode.region} onSave={(val) => renameRegion(groupNode.group, regionNode.region, val)} className="text-zinc-400" />
                                 </span>
                                 <span className="text-xs text-zinc-700">
                                   {regionNode.languages.length + regionNode.subRegions.reduce((a, s) => a + s.languages.length, 0)}
                                 </span>
                               </div>
 
-                              {/* Region Content */}
                               {regionOpen && (
                                 <div className="px-4 pb-3 space-y-3">
+                                  {regionNode.languages.map(lang => <LangRow key={lang.code} lang={lang} />)}
 
-                                  {/* Direkte Sprachen */}
-                                  {regionNode.languages.map(lang => (
-                                    <div
-                                      key={lang.code}
-                                      draggable
-                                      onDragStart={() => handleLangDragStart(lang.code)}
-                                      onDragOver={(e) => { e.preventDefault(); setDragOver(`lang:${lang.code}`); }}
-                                      onDragLeave={() => setDragOver(null)}
-                                      onDrop={() => handleDropOnLang(lang.code)}
-                                      onClick={() => setEditingLang(lang)}
-                                      className={["flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors",
-                                        dragOver === `lang:${lang.code}` ? "border-white/30 bg-zinc-700" :
-                                        editingLang?.code === lang.code ? "border-zinc-400 bg-zinc-900" :
-                                        "border-zinc-800 hover:border-zinc-700"].join(" ")}
-                                    >
-                                      <DragHandle onDragStart={(e) => { e.stopPropagation(); handleLangDragStart(lang.code); }} />
-                                      <span className="flex-1 text-sm text-white">{lang.label}</span>
-                                      <span className="text-xs text-zinc-600 bg-zinc-900 px-2 py-0.5 rounded-md">{lang.code.toUpperCase()}</span>
-                                      <span className={["text-xs px-2 py-0.5 rounded-full",
-                                        lang.active ? "text-green-400 bg-green-400/10" : "text-zinc-600 bg-zinc-800"].join(" ")}>
-                                        {lang.active ? "aktiv" : "inaktiv"}
-                                      </span>
-                                    </div>
-                                  ))}
-
-                                  {/* Unterregionen */}
                                   {regionNode.subRegions.map(subNode => {
                                     const subKey = `${regionKey}:${subNode.subRegion}`;
                                     const subOpen = !closedRegions.has(subKey);
@@ -549,29 +502,7 @@ export default function MenuPage() {
                                         </div>
                                         {subOpen && (
                                           <div className="px-3 pb-3 space-y-2">
-                                            {subNode.languages.map(lang => (
-                                              <div
-                                                key={lang.code}
-                                                draggable
-                                                onDragStart={() => handleLangDragStart(lang.code)}
-                                                onDragOver={(e) => { e.preventDefault(); setDragOver(`lang:${lang.code}`); }}
-                                                onDragLeave={() => setDragOver(null)}
-                                                onDrop={() => handleDropOnLang(lang.code)}
-                                                onClick={() => setEditingLang(lang)}
-                                                className={["flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors",
-                                                  dragOver === `lang:${lang.code}` ? "border-white/30 bg-zinc-700" :
-                                                  editingLang?.code === lang.code ? "border-zinc-400 bg-zinc-900" :
-                                                  "border-zinc-800 hover:border-zinc-700"].join(" ")}
-                                              >
-                                                <DragHandle onDragStart={(e) => { e.stopPropagation(); handleLangDragStart(lang.code); }} />
-                                                <span className="flex-1 text-sm text-white">{lang.label}</span>
-                                                <span className="text-xs text-zinc-600 bg-zinc-900 px-2 py-0.5 rounded-md">{lang.code.toUpperCase()}</span>
-                                                <span className={["text-xs px-2 py-0.5 rounded-full",
-                                                  lang.active ? "text-green-400 bg-green-400/10" : "text-zinc-600 bg-zinc-800"].join(" ")}>
-                                                  {lang.active ? "aktiv" : "inaktiv"}
-                                                </span>
-                                              </div>
-                                            ))}
+                                            {subNode.languages.map(lang => <LangRow key={lang.code} lang={lang} />)}
                                           </div>
                                         )}
                                       </div>
@@ -612,12 +543,12 @@ export default function MenuPage() {
                 <label className="block">
                   <div className="mb-2 text-zinc-400 text-sm">Region (oder Region/Unterregion)</div>
                   <input value={editingLang.region ?? ""} onChange={(e) => updateEditingLang({ region: e.target.value })}
-                    list="r-opts" placeholder="Dialekte/Bern"
+                    list="r-opts" placeholder="Landessprachen/Rätoromanisch"
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none text-sm" />
                   <datalist id="r-opts">
                     {[...new Set(languages.map(l => l.region ?? ""))].filter(Boolean).map(r => <option key={r} value={r} />)}
                   </datalist>
-                  <div className="mt-2 text-xs text-zinc-600">Unterregion: z. B. <span className="text-zinc-400">Dialekte/Bern</span></div>
+                  <div className="mt-2 text-xs text-zinc-600">Unterregion: z. B. <span className="text-zinc-400">Landessprachen/Rätoromanisch</span></div>
                 </label>
                 <label className="flex items-center gap-3">
                   <input type="checkbox" checked={editingLang.active} onChange={(e) => updateEditingLang({ active: e.target.checked })} />
@@ -631,6 +562,12 @@ export default function MenuPage() {
                 <div className="mt-2 text-base font-medium">{editingLang.label}</div>
                 <div className="text-xs text-zinc-600 mt-0.5">{editingLang.code.toUpperCase()}</div>
               </div>
+              <button
+                onClick={() => deleteLang(editingLang.code)}
+                className="mt-4 w-full rounded-2xl border border-red-900 text-red-500 hover:bg-red-950 px-4 py-3 text-sm transition"
+              >
+                🗑 Löschen
+              </button>
             </>
           ) : (
             <div className="space-y-3 text-sm text-zinc-500">
@@ -639,7 +576,7 @@ export default function MenuPage() {
               <p>✎ Name anklicken zum Umbenennen.</p>
               <p>⠿ Drag Handle zum Verschieben.</p>
               <p>Sprache anklicken → Eigenschaften bearbeiten.</p>
-              <p className="text-zinc-600 text-xs">Unterregion via Feld: <span className="text-zinc-400">Dialekte/Bern</span></p>
+              <p className="text-zinc-600 text-xs">Unterregion via Feld: <span className="text-zinc-400">Landessprachen/Rätoromanisch</span></p>
               <div className="pt-3 border-t border-zinc-800 text-zinc-600 text-xs">
                 {languages.length} Sprachen · {tree.length} Gruppen
               </div>

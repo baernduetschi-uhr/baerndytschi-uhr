@@ -10,6 +10,7 @@ type MealWindow = {
   from: string;
   to: string;
   active: boolean;
+  color: string;
 };
 
 type LanguageOption = {
@@ -28,6 +29,17 @@ const KEY_SUGGESTIONS = [
   "meal.lunch",
   "meal.afternoon",
   "meal.dinner",
+];
+
+const COLORS = [
+  { value: "gold",   label: "Gold",   bg: "bg-yellow-500",  border: "border-yellow-400",  text: "text-yellow-300" },
+  { value: "white",  label: "Weiss",  bg: "bg-white",       border: "border-white",        text: "text-white" },
+  { value: "pink",   label: "Rosa",   bg: "bg-pink-500",    border: "border-pink-400",     text: "text-pink-300" },
+  { value: "blue",   label: "Blau",   bg: "bg-blue-500",    border: "border-blue-400",     text: "text-blue-300" },
+  { value: "red",    label: "Rot",    bg: "bg-red-500",     border: "border-red-400",      text: "text-red-300" },
+  { value: "green",  label: "Grün",   bg: "bg-green-500",   border: "border-green-400",    text: "text-green-300" },
+  { value: "purple", label: "Lila",   bg: "bg-purple-500",  border: "border-purple-400",   text: "text-purple-300" },
+  { value: "orange", label: "Orange", bg: "bg-orange-500",  border: "border-orange-400",   text: "text-orange-300" },
 ];
 
 function extractMealKey(key: string | null): string | null {
@@ -69,7 +81,6 @@ export default function MealWindowsPage() {
     loadAll();
   }, []);
 
-  // Übersetzungen laden wenn Zytfänschter gewechselt
   useEffect(() => {
     if (!selectedId) return;
     const meal = items.find(i => i.id === selectedId);
@@ -115,11 +126,10 @@ export default function MealWindowsPage() {
       from: "06:00:00",
       to: "07:00:00",
       active: true,
+      color: "white",
     };
-
     const { data, error } = await supabase.from("meal_windows").insert(newItem).select().single();
     if (error) { console.error("Fehler:", error); return; }
-
     const created = data as MealWindow;
     setItems(prev => [...prev, created].sort((a, b) => a.from.localeCompare(b.from)));
     setSelectedId(created.id);
@@ -129,7 +139,6 @@ export default function MealWindowsPage() {
     if (!draft) return;
     setSaving(true);
 
-    // 1. Zytfänschter speichern
     const { error } = await supabase
       .from("meal_windows")
       .update({
@@ -138,22 +147,17 @@ export default function MealWindowsPage() {
         from: draft.from,
         to: draft.to,
         active: draft.active,
+        color: draft.color,
       })
       .eq("id", draft.id);
 
-    if (error) {
-      console.error("Fehler:", error);
-      setSaving(false);
-      return;
-    }
+    if (error) { console.error("Fehler:", error); setSaving(false); return; }
 
-    // 2. Übersetzungen speichern
     const tKey = extractMealKey(draft.key);
     if (tKey) {
       const rows = translations
         .filter(t => t.value.trim())
         .map(t => ({ category: "meal", key: tKey, value: t.value.trim(), language: t.language }));
-
       if (rows.length > 0) {
         await supabase.from("translations").upsert(rows, { onConflict: "language,category,key" });
       }
@@ -183,6 +187,8 @@ export default function MealWindowsPage() {
     setSelectedId(remaining[0]?.id ?? null);
   }
 
+  const activeColor = COLORS.find(c => c.value === (draft?.color ?? "white")) ?? COLORS[1];
+
   return (
     <div className="text-white">
       <div className="mb-8">
@@ -196,7 +202,7 @@ export default function MealWindowsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
 
-          {/* Linke Liste */}
+          {/* Liste */}
           <section className="rounded-[2rem] border border-zinc-800 bg-zinc-950 p-5">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-3xl font-semibold">Zytfänschter</h2>
@@ -206,6 +212,7 @@ export default function MealWindowsPage() {
             <div className="space-y-4">
               {items.map(item => {
                 const active = item.id === selectedId;
+                const color = COLORS.find(c => c.value === item.color) ?? COLORS[1];
                 return (
                   <button
                     key={item.id}
@@ -215,7 +222,10 @@ export default function MealWindowsPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="text-2xl font-medium">{item.label || item.key || "—"}</div>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${color.bg}`} />
+                          <div className="text-2xl font-medium">{item.label || item.key || "—"}</div>
+                        </div>
                         {item.key && (
                           <div className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">{item.key}</div>
                         )}
@@ -235,7 +245,7 @@ export default function MealWindowsPage() {
             </div>
           </section>
 
-          {/* Rechts: Bearbeiten */}
+          {/* Bearbeiten */}
           <section className="rounded-[2rem] border border-zinc-800 bg-zinc-950 p-8">
             {draft ? (
               <>
@@ -250,7 +260,7 @@ export default function MealWindowsPage() {
                       onChange={(e) => setDraft({ ...draft, key: e.target.value })}
                       list="meal-key-suggestions"
                       placeholder="meal.breakfast"
-                      className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-4 text-white outline-none"
+                      className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-4 text-white outline-none focus:border-zinc-600 transition"
                     />
                     <datalist id="meal-key-suggestions">
                       {KEY_SUGGESTIONS.map(k => <option key={k} value={k} />)}
@@ -266,26 +276,49 @@ export default function MealWindowsPage() {
                     <input
                       value={draft.label}
                       onChange={(e) => setDraft({ ...draft, label: e.target.value })}
-                      className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-4 text-white outline-none"
+                      className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-4 text-white outline-none focus:border-zinc-600 transition"
                     />
-                    <div className="mt-2 text-sm text-zinc-500">
-                      Wird angezeigt falls keine Übersetzung vorhanden ist.
-                    </div>
+                    <div className="mt-2 text-sm text-zinc-500">Wird angezeigt falls keine Übersetzung vorhanden ist.</div>
                   </label>
+
+                  {/* Farbe */}
+                  <div className="md:col-span-2">
+                    <div className="mb-3 text-zinc-400">Farb</div>
+                    <div className="flex flex-wrap gap-4">
+                      {COLORS.map(color => (
+                        <label key={color.value} className="flex items-center gap-2 cursor-pointer">
+                          <div
+                            className={[
+                              "w-6 h-6 rounded-full border-2 flex items-center justify-center transition",
+                              draft.color === color.value ? `${color.bg} ${color.border}` : "border-zinc-600 bg-transparent",
+                            ].join(" ")}
+                            onClick={() => setDraft({ ...draft, color: color.value })}
+                          >
+                            {draft.color === color.value && (
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+                          <span className={draft.color === color.value ? color.text : "text-zinc-400"}>{color.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
 
                   {/* Zeit */}
                   <label className="block">
                     <div className="mb-2 text-zinc-400">Von</div>
                     <input type="time" value={formatTimeValue(draft.from)}
                       onChange={(e) => setDraft({ ...draft, from: normalizeTimeInput(e.target.value) })}
-                      className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-4 text-white outline-none" />
+                      className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-4 text-white outline-none focus:border-zinc-600 transition" />
                   </label>
 
                   <label className="block">
                     <div className="mb-2 text-zinc-400">Bis</div>
                     <input type="time" value={formatTimeValue(draft.to)}
                       onChange={(e) => setDraft({ ...draft, to: normalizeTimeInput(e.target.value) })}
-                      className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-4 text-white outline-none" />
+                      className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-4 text-white outline-none focus:border-zinc-600 transition" />
                   </label>
 
                   {/* Aktiv */}
@@ -299,9 +332,7 @@ export default function MealWindowsPage() {
                 {/* Übersetzungen */}
                 <div className="mt-8">
                   <h3 className="text-2xl font-semibold mb-4">Übersetzungen</h3>
-                  <p className="text-sm text-zinc-500 mb-5">
-                    Text der pro Sprache auf der Uhr erscheint wenn dieses Zytfänschter aktiv ist.
-                  </p>
+                  <p className="text-sm text-zinc-500 mb-5">Text der pro Sprache auf der Uhr erscheint wenn dieses Zytfänschter aktiv ist.</p>
 
                   {extractMealKey(draft.key) ? (
                     <div className="grid gap-4">
@@ -317,7 +348,7 @@ export default function MealWindowsPage() {
                               value={t.value}
                               onChange={(e) => setTranslationValue(t.language, e.target.value)}
                               placeholder={`${draft.label} auf ${lang?.label ?? t.language}`}
-                              className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-3 text-white outline-none"
+                              className="w-full rounded-2xl border border-zinc-800 bg-black px-5 py-3 text-white outline-none focus:border-zinc-600 transition"
                             />
                           </div>
                         );
@@ -349,6 +380,10 @@ export default function MealWindowsPage() {
                 {/* Vorschau */}
                 <div className="mt-10 rounded-[1.75rem] border border-zinc-800 p-6">
                   <div className="mb-4 text-xs uppercase tracking-[0.35em] text-zinc-500">Vorschau</div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-4 h-4 rounded-full ${activeColor.bg}`} />
+                    <div className={`text-sm uppercase tracking-[0.2em] ${activeColor.text}`}>{activeColor.label}</div>
+                  </div>
                   <div className="text-sm uppercase tracking-[0.2em] text-zinc-500">{draft.key || "kein key"}</div>
                   <div className="mt-3 text-6xl font-semibold">{draft.label || "—"}</div>
                   <div className="mt-4 text-xl text-zinc-400">{formatTimeValue(draft.from)} – {formatTimeValue(draft.to)}</div>

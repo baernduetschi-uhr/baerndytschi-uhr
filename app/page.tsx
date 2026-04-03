@@ -18,9 +18,22 @@ type LanguageOption = {
   region: string | null;
 };
 
+// Birthday Type ergänzen
+type Birthday = {
+  id: string;
+  name: string;
+  date: string;
+  active: boolean;
+  display_word_key: string | null;
+  color: string;  // ← neu
+};
+
 const fallbackDisplayState: ClockDisplayState = {
   holidayText: "",
+  holidayColor: "gold",
+  birthdays: [],
   mealText: "",
+  mealColor: "white",
   timeText: "Lade...",
   dateText: "",
   digitalText: "",
@@ -34,7 +47,6 @@ function toBoolean(value: string | null, fallback: boolean) {
   if (value === null) return fallback;
   return value === "true";
 }
-
 
 // ─── Baum aus DB aufbauen ────────────────────────────────────────────────────
 
@@ -165,12 +177,9 @@ function LanguageDropdown({ languages, activeLanguage, switching, onSelect }: Dr
 
       {open && (
         <div style={ps}>
-          {/* ROOT */}
           {level.type === "root" && tree.map((g, i) => (
             <div key={g.group}>{i > 0 && div()}{folder(g.group, () => setLevel({ type: "group", group: g.group }))}</div>
           ))}
-
-          {/* GROUP */}
           {level.type === "group" && curGroup && (
             <>
               {back("Zurück", () => setLevel({ type: "root" }))}
@@ -187,8 +196,6 @@ function LanguageDropdown({ languages, activeLanguage, switching, onSelect }: Dr
               ))}
             </>
           )}
-
-          {/* REGION */}
           {level.type === "region" && curGroup && curRegion && (
             <>
               {back(curGroup.group, () => setLevel({ type: "group", group: curGroup.group }))}
@@ -200,8 +207,6 @@ function LanguageDropdown({ languages, activeLanguage, switching, onSelect }: Dr
               ))}
             </>
           )}
-
-          {/* SUBREGION */}
           {level.type === "subregion" && curGroup && curRegion && (() => {
             const sub = curRegion.subRegions.find(sr => sr.subRegion === (level as {type:"subregion";subRegion:string}).subRegion);
             return sub ? (
@@ -224,6 +229,7 @@ export default function Home() {
   const [now, setNow] = useState(new Date());
   const [meals, setMeals] = useState<MealWindow[]>([]);
   const [holidays, setHolidays] = useState<ResolvedHoliday[]>([]);
+  const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [languages, setLanguages] = useState<LanguageOption[]>([]);
   const [activeLanguage, setActiveLanguage] = useState("be");
   const [showDigitalTime, setShowDigitalTime] = useState(true);
@@ -280,7 +286,7 @@ export default function Home() {
     async function loadMeals() {
       const { data, error } = await supabase
         .from("meal_windows")
-        .select("id, key, label, from, to, active")
+        .select("id, key, label, from, to, active, color")
         .order("from", { ascending: true });
       if (error) { console.error("meal error:", error); return; }
       setMeals((data ?? []) as MealWindow[]);
@@ -299,13 +305,25 @@ export default function Home() {
   }, [holidayYear]);
 
   useEffect(() => {
+    async function loadBirthdays() {
+      const { data, error } = await supabase
+        .from("birthdays")
+        .select("id, name, date, active, display_word_key, color")  // ← color neu
+        .eq("active", true);
+      if (error) { console.error("birthday error:", error); return; }
+      setBirthdays((data ?? []) as Birthday[]);
+    }
+    loadBirthdays();
+  }, []);
+
+  useEffect(() => {
     async function buildDisplayState() {
-      const nextState = await getClockData({ now, language: activeLanguage, holidays, meals, showDate });
+      const nextState = await getClockData({ now, language: activeLanguage, holidays, meals, birthdays, showDate });
       setAnimate(false);
       requestAnimationFrame(() => { setDisplayState(nextState); setAnimate(true); });
     }
     buildDisplayState();
-  }, [now, activeLanguage, holidays, meals, showDate]);
+  }, [now, activeLanguage, holidays, meals, birthdays, showDate]);
 
   async function changeLanguage(code: string) {
     if (code === activeLanguage || switchingLanguage) return;
@@ -334,7 +352,6 @@ export default function Home() {
           </>
         )}
 
-        {/* Dropdown oben rechts */}
         <div className="absolute right-6 top-6 z-50">
           {languages.length > 0 && (
             <LanguageDropdown
