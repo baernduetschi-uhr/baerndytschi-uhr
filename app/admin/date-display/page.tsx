@@ -47,7 +47,10 @@ const previewNow = new Date("2026-03-23T17:55:00");
 
 const previewFallbackState: ClockDisplayState = {
   holidayText: "",
+  holidayColor: "gold",
+  birthdays: [],
   mealText: "",
+  mealColor: "white",
   timeText: "...",
   dateText: "",
   digitalText: "17:55",
