@@ -1,46 +1,24 @@
-import type { ResolveDisplayStateInput, ClockDisplayState } from "./types";
+import { supabase } from "@/lib/supabase";
+import type { Holiday, HolidayRule } from "@/src/domain/holidays/types";
+import { buildHolidaysFromRules } from "@/src/domain/holidays/buildHolidaysFromRules";
 
-function isSameDate(a: Date, b: string) {
-  return a.toISOString().slice(0, 10) === b;
-}
+export async function getResolvedHolidays(year: number): Promise<Holiday[]> {
+  const [{ data: holidaysData, error: holidaysError }, { data: rulesData, error: rulesError }] =
+    await Promise.all([
+      supabase.from("holidays").select("id, key, name, date, text, active, color"),
+      supabase.from("holiday_rules").select("id, key, name, rule_type, month, day, offset_days, active"),
+    ]);
 
-export function resolveDisplayState(
-  input: ResolveDisplayStateInput
-): ClockDisplayState {
-  const {
-    now,
-    holidays,
-    meals,
-    dateText,
-    timeText,
-    digitalText,
-    digitalDateText,
-    birthdays,
-  } = input;
+  if (holidaysError) throw holidaysError;
+  if (rulesError) throw rulesError;
 
-  const activeHoliday = holidays.find(
-    (h) => h.active && isSameDate(now, h.date)
-  );
+  const manualHolidays = (holidaysData ?? []) as Holiday[];
+  const holidayRules = (rulesData ?? []) as HolidayRule[];
 
-  const activeMeal = meals.find(
-    (m) =>
-      m.active &&
-      now.toTimeString().slice(0, 5) >= m.from.slice(0, 5) &&
-      now.toTimeString().slice(0, 5) <= m.to.slice(0, 5)
-  );
+  const generatedHolidays = buildHolidaysFromRules({
+    year,
+    rules: holidayRules,
+  });
 
-  return {
-    holidayText: activeHoliday?.text ?? "",
-    holidayColor: (activeHoliday as any)?.color ?? "gold",
-    birthdays: birthdays ?? [],
-    mealText: activeMeal?.label ?? "",
-    mealColor: (activeMeal as any)?.color ?? "white",
-    timeText,
-    dateText,
-    digitalText,
-    digitalDateText,
-    theme: activeHoliday ? "holiday" : "default",
-    holiday: activeHoliday ?? null,
-    meal: activeMeal ?? null,
-  };
+  return [...manualHolidays, ...generatedHolidays];
 }
